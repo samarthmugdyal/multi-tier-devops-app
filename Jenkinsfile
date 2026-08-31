@@ -1,0 +1,174 @@
+pipeline {
+
+    agent any
+
+    environment {
+        DOCKER_USERNAME = 'samarthmugdyal'
+
+        BACKEND_IMAGE  = "${DOCKER_USERNAME}/multi-tier-backend"
+        FRONTEND_IMAGE = "${DOCKER_USERNAME}/multi-tier-frontend"
+        PROXY_IMAGE    = "${DOCKER_USERNAME}/multi-tier-proxy"
+
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo '=========================================='
+                echo 'Checking out source code'
+                echo '=========================================='
+
+                checkout scm
+
+                sh '''
+                    echo "Current directory:"
+                    pwd
+
+                    echo "Project files:"
+                    ls -la
+
+                    echo "Project structure:"
+                    find . -maxdepth 2 -type f | sort
+                '''
+            }
+        }
+
+
+        stage('Validate Project') {
+            steps {
+                echo '=========================================='
+                echo 'Validating project structure'
+                echo '=========================================='
+
+                sh '''
+                    test -f docker-compose.yml
+                    test -f backend/Dockerfile
+                    test -f frontend/Dockerfile
+                    test -f proxy/Dockerfile
+                    test -f db/init.sql
+
+                    echo "All required project files found."
+                '''
+            }
+        }
+
+
+        stage('Docker Check') {
+            steps {
+                echo '=========================================='
+                echo 'Checking Docker'
+                echo '=========================================='
+
+                sh '''
+                    docker --version
+                    docker compose version
+                    docker info
+                '''
+            }
+        }
+
+
+        stage('Build Backend Image') {
+            steps {
+                echo '=========================================='
+                echo 'Building Backend Docker Image'
+                echo '=========================================='
+
+                sh '''
+                    docker build \
+                        -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                        -t ${BACKEND_IMAGE}:latest \
+                        ./backend
+                '''
+            }
+        }
+
+
+        stage('Build Frontend Image') {
+            steps {
+                echo '=========================================='
+                echo 'Building Frontend Docker Image'
+                echo '=========================================='
+
+                sh '''
+                    docker build \
+                        -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                        -t ${FRONTEND_IMAGE}:latest \
+                        ./frontend
+                '''
+            }
+        }
+
+
+        stage('Build Proxy Image') {
+            steps {
+                echo '=========================================='
+                echo 'Building Proxy Docker Image'
+                echo '=========================================='
+
+                sh '''
+                    docker build \
+                        -t ${PROXY_IMAGE}:${IMAGE_TAG} \
+                        -t ${PROXY_IMAGE}:latest \
+                        ./proxy
+                '''
+            }
+        }
+
+
+        stage('List Docker Images') {
+            steps {
+                echo '=========================================='
+                echo 'Docker Images Created'
+                echo '=========================================='
+
+                sh '''
+                    docker images | grep -E \
+                    "multi-tier-backend|multi-tier-frontend|multi-tier-proxy"
+                '''
+            }
+        }
+
+
+        stage('Compose Validation') {
+            steps {
+                echo '=========================================='
+                echo 'Validating Docker Compose'
+                echo '=========================================='
+
+                sh '''
+                    docker compose config
+                '''
+            }
+        }
+    }
+
+
+    post {
+
+        success {
+            echo '=========================================='
+            echo 'PIPELINE SUCCESS'
+            echo '=========================================='
+            echo "Build Number: ${BUILD_NUMBER}"
+            echo "Backend Image: ${BACKEND_IMAGE}:${IMAGE_TAG}"
+            echo "Frontend Image: ${FRONTEND_IMAGE}:${IMAGE_TAG}"
+            echo "Proxy Image: ${PROXY_IMAGE}:${IMAGE_TAG}"
+        }
+
+        failure {
+            echo '=========================================='
+            echo 'PIPELINE FAILED'
+            echo '=========================================='
+            echo 'Check the Jenkins Console Output.'
+        }
+
+        always {
+            echo '=========================================='
+            echo 'Pipeline completed'
+            echo '=========================================='
+        }
+    }
+}
