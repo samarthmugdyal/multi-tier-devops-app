@@ -1,2 +1,2 @@
 jenkins CI/CD test
-new pipeline
+new pipeline new project 
