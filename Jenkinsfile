@@ -262,7 +262,7 @@ pipeline {
 
                 withCredentials([
                     string(
-                        credentialsId: 'ssh-for-jen-docker',
+                        credentialsId: 'docker-server-ip',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
