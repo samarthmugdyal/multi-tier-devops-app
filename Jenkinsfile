@@ -5,7 +5,11 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
-        timeout(time: 30, unit: 'MINUTES')
+
+        timeout(
+            time: 30,
+            unit: 'MINUTES'
+        )
 
         buildDiscarder(
             logRotator(
@@ -14,43 +18,32 @@ pipeline {
         )
     }
 
-    environment {
-
-        DOCKER_BACKEND_IMAGE  = "${DOCKER_USERNAME}/multi-tier-backend"
-        DOCKER_FRONTEND_IMAGE = "${DOCKER_USERNAME}/multi-tier-frontend"
-        DOCKER_PROXY_IMAGE    = "${DOCKER_USERNAME}/multi-tier-proxy"
-
-        DOCKER_CREDENTIAL_ID = 'docker-hub-credentials'
-
-        APP_SERVER_CREDENTIAL_ID = 'jen-server-ssh-docker'
-        APP_SERVER_IP_CREDENTIAL_ID = 'docker-server-ip'
-
-        APP_DIR = '/home/ubuntu/multi-tier-devops-app'
-    }
-
     stages {
 
-        // ==========================================
-        // 1. CHECKOUT
-        // ==========================================
+        /*
+         * =========================================================
+         * CHECKOUT
+         * =========================================================
+         */
 
         stage('Checkout') {
-
             steps {
-
-                echo 'Checking out source code from GitHub...'
+                echo '========================================'
+                echo 'Checking out source code from GitHub'
+                echo '========================================'
 
                 checkout scm
             }
         }
 
 
-        // ==========================================
-        // 2. VALIDATE PROJECT
-        // ==========================================
+        /*
+         * =========================================================
+         * VALIDATE PROJECT
+         * =========================================================
+         */
 
         stage('Validate Project') {
-
             steps {
 
                 echo 'Validating project structure...'
@@ -69,18 +62,22 @@ pipeline {
         }
 
 
-        // ==========================================
-        // 3. CHECK DOCKER
-        // ==========================================
+        /*
+         * =========================================================
+         * DOCKER CHECK
+         * =========================================================
+         */
 
         stage('Docker Check') {
-
             steps {
 
                 sh '''
                     set -e
 
+                    echo "Docker version:"
                     docker --version
+
+                    echo "Docker Compose version:"
                     docker compose version
 
                     echo "Docker is available."
@@ -89,77 +86,85 @@ pipeline {
         }
 
 
-        // ==========================================
-        // 4. BUILD BACKEND
-        // ==========================================
+        /*
+         * =========================================================
+         * BUILD DOCKER IMAGES
+         * =========================================================
+         */
 
-        stage('Build Backend') {
-
-            steps {
-
-                sh '''
-                    set -e
-
-                    docker build \
-                      -t ${DOCKER_BACKEND_IMAGE}:${BUILD_NUMBER} \
-                      -t ${DOCKER_BACKEND_IMAGE}:latest \
-                      ./backend
-                '''
-            }
-        }
-
-
-        // ==========================================
-        // 5. BUILD FRONTEND
-        // ==========================================
-
-        stage('Build Frontend') {
-
-            steps {
-
-                sh '''
-                    set -e
-
-                    docker build \
-                      -t ${DOCKER_FRONTEND_IMAGE}:${BUILD_NUMBER} \
-                      -t ${DOCKER_FRONTEND_IMAGE}:latest \
-                      ./frontend
-                '''
-            }
-        }
-
-
-        // ==========================================
-        // 6. BUILD PROXY
-        // ==========================================
-
-        stage('Build Proxy') {
-
-            steps {
-
-                sh '''
-                    set -e
-
-                    docker build \
-                      -t ${DOCKER_PROXY_IMAGE}:${BUILD_NUMBER} \
-                      -t ${DOCKER_PROXY_IMAGE}:latest \
-                      ./proxy
-                '''
-            }
-        }
-
-
-        // ==========================================
-        // 7. DOCKER HUB LOGIN
-        // ==========================================
-
-        stage('Docker Hub Login') {
-
+        stage('Build Docker Images') {
             steps {
 
                 withCredentials([
                     usernamePassword(
-                        credentialsId: "${DOCKER_CREDENTIAL_ID}",
+                        credentialsId: 'docker-hub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+
+                    sh '''
+                        set -e
+
+                        echo "========================================"
+                        echo "Building Docker Images"
+                        echo "========================================"
+
+                        echo "Docker Hub User: $DOCKER_USERNAME"
+
+                        echo ""
+                        echo "Building Backend image..."
+
+                        docker build \
+                            -t "$DOCKER_USERNAME/multi-tier-backend:$BUILD_NUMBER" \
+                            -t "$DOCKER_USERNAME/multi-tier-backend:latest" \
+                            ./backend
+
+
+                        echo ""
+                        echo "Building Frontend image..."
+
+                        docker build \
+                            -t "$DOCKER_USERNAME/multi-tier-frontend:$BUILD_NUMBER" \
+                            -t "$DOCKER_USERNAME/multi-tier-frontend:latest" \
+                            ./frontend
+
+
+                        echo ""
+                        echo "Building Proxy image..."
+
+                        docker build \
+                            -t "$DOCKER_USERNAME/multi-tier-proxy:$BUILD_NUMBER" \
+                            -t "$DOCKER_USERNAME/multi-tier-proxy:latest" \
+                            ./proxy
+
+
+                        echo ""
+                        echo "========================================"
+                        echo "All Docker images built successfully."
+                        echo "========================================"
+
+                        echo ""
+                        echo "Images created:"
+                        docker images | grep "$DOCKER_USERNAME/multi-tier"
+                    '''
+                }
+            }
+        }
+
+
+        /*
+         * =========================================================
+         * DOCKER HUB LOGIN
+         * =========================================================
+         */
+
+        stage('Docker Hub Login') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-hub-credentials',
                         usernameVariable: 'DOCKER_USERNAME',
                         passwordVariable: 'DOCKER_PASSWORD'
                     )
@@ -168,91 +173,133 @@ pipeline {
                     sh '''
                         set +x
 
+                        echo "Logging in to Docker Hub..."
+
                         echo "$DOCKER_PASSWORD" | docker login \
-                            -u "$DOCKER_USERNAME" \
+                            --username "$DOCKER_USERNAME" \
                             --password-stdin
+
+                        echo "Docker Hub login successful."
                     '''
                 }
             }
         }
 
 
-        // ==========================================
-        // 8. PUSH IMAGES
-        // ==========================================
+        /*
+         * =========================================================
+         * PUSH DOCKER IMAGES
+         * =========================================================
+         */
 
         stage('Push Images') {
-
             steps {
 
-                sh '''
-                    set -e
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
 
-                    docker push ${DOCKER_BACKEND_IMAGE}:${BUILD_NUMBER}
-                    docker push ${DOCKER_BACKEND_IMAGE}:latest
+                    sh '''
+                        set -e
 
-                    docker push ${DOCKER_FRONTEND_IMAGE}:${BUILD_NUMBER}
-                    docker push ${DOCKER_FRONTEND_IMAGE}:latest
+                        echo "========================================"
+                        echo "Pushing Images to Docker Hub"
+                        echo "========================================"
 
-                    docker push ${DOCKER_PROXY_IMAGE}:${BUILD_NUMBER}
-                    docker push ${DOCKER_PROXY_IMAGE}:latest
-                '''
+
+                        echo ""
+                        echo "Pushing Backend image..."
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-backend:$BUILD_NUMBER"
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-backend:latest"
+
+
+                        echo ""
+                        echo "Pushing Frontend image..."
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-frontend:$BUILD_NUMBER"
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-frontend:latest"
+
+
+                        echo ""
+                        echo "Pushing Proxy image..."
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-proxy:$BUILD_NUMBER"
+
+                        docker push \
+                            "$DOCKER_USERNAME/multi-tier-proxy:latest"
+
+
+                        echo ""
+                        echo "========================================"
+                        echo "All images pushed successfully."
+                        echo "========================================"
+                    '''
+                }
             }
         }
 
 
-        // ==========================================
-        // 9. DEPLOY TO APPLICATION EC2
-        // ==========================================
+        /*
+         * =========================================================
+         * DEPLOY TO APPLICATION EC2
+         * =========================================================
+         */
 
         stage('Deploy to Application EC2') {
-
             steps {
 
                 withCredentials([
                     string(
-                        credentialsId: "${APP_SERVER_IP_CREDENTIAL_ID}",
+                        credentialsId: 'docker-server-ip',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
 
-                    sshagent([
-                        "${APP_SERVER_CREDENTIAL_ID}"
-                    ]) {
+                    sshagent(
+                        credentials: [
+                            'docker-server-ssh'
+                        ]
+                    ) {
 
                         sh '''
                             set -e
 
-                            echo "Deploying build ${BUILD_NUMBER}..."
+                            echo "========================================"
+                            echo "Deploying Application"
+                            echo "Build Number: $BUILD_NUMBER"
+                            echo "Application Server: $APP_SERVER_IP"
+                            echo "========================================"
+
+
+                            echo ""
+                            echo "Connecting to Application EC2..."
+
 
                             ssh \
-                              -o StrictHostKeyChecking=no \
-                              ubuntu@"$APP_SERVER_IP" \
-                              "
-                                set -e
+                                -o StrictHostKeyChecking=no \
+                                ubuntu@"$APP_SERVER_IP" \
+                                "cd /home/ubuntu/multi-tier-devops-app && \
+                                 sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=$BUILD_NUMBER/' .env && \
+                                 docker compose pull && \
+                                 docker compose up -d --remove-orphans"
 
-                                cd $APP_DIR
 
-                                echo 'Updating deployment version...'
-
-                                if grep -q '^IMAGE_TAG=' .env; then
-                                    sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=${BUILD_NUMBER}/' .env
-                                else
-                                    echo 'IMAGE_TAG=${BUILD_NUMBER}' >> .env
-                                fi
-
-                                echo 'Pulling Docker images...'
-
-                                docker compose pull
-
-                                echo 'Starting application...'
-
-                                docker compose up -d --remove-orphans
-
-                                echo 'Current containers:'
-
-                                docker compose ps
-                              "
+                            echo ""
+                            echo "========================================"
+                            echo "Deployment completed successfully."
+                            echo "========================================"
                         '''
                     }
                 }
@@ -260,42 +307,50 @@ pipeline {
         }
 
 
-        // ==========================================
-        // 10. HEALTH CHECK
-        // ==========================================
+        /*
+         * =========================================================
+         * HEALTH CHECK
+         * =========================================================
+         */
 
         stage('Health Check') {
-
             steps {
 
                 withCredentials([
                     string(
-                        credentialsId: "${APP_SERVER_IP_CREDENTIAL_ID}",
+                        credentialsId: 'docker-server-ip',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
 
-                    sshagent([
-                        "${APP_SERVER_CREDENTIAL_ID}"
-                    ]) {
+                    sshagent(
+                        credentials: [
+                            'docker-server-ssh'
+                        ]
+                    ) {
 
                         sh '''
                             set -e
 
-                            echo "Waiting for application..."
+                            echo "Waiting for application to start..."
 
                             sleep 15
 
-                            echo "Checking application..."
+
+                            echo ""
+                            echo "Checking application health..."
+
 
                             ssh \
-                              -o StrictHostKeyChecking=no \
-                              ubuntu@"$APP_SERVER_IP" \
-                              "
-                                curl -fsS http://localhost/ > /dev/null
-                            "
+                                -o StrictHostKeyChecking=no \
+                                ubuntu@"$APP_SERVER_IP" \
+                                "curl -fsS http://localhost/ > /dev/null"
 
-                            echo "Application health check successful."
+
+                            echo ""
+                            echo "========================================"
+                            echo "APPLICATION IS HEALTHY"
+                            echo "========================================"
                         '''
                     }
                 }
@@ -304,9 +359,11 @@ pipeline {
     }
 
 
-    // ==========================================
-    // POST ACTIONS
-    // ==========================================
+    /*
+     * =============================================================
+     * POST ACTIONS
+     * =============================================================
+     */
 
     post {
 
@@ -316,23 +373,43 @@ pipeline {
             ==========================================
             CI/CD PIPELINE SUCCESSFUL
             ==========================================
+
+            GitHub
+                ↓
+            Jenkins
+                ↓
+            Docker Build
+                ↓
+            Docker Hub
+                ↓
+            Application EC2
+                ↓
+            Health Check
+
+            ==========================================
             '''
         }
+
 
         failure {
 
             echo '''
             ==========================================
             CI/CD PIPELINE FAILED
+            ==========================================
+
             Check the failed stage above.
+
             ==========================================
             '''
         }
+
 
         always {
 
             sh '''
                 docker logout || true
+
                 docker image prune -f || true
             '''
         }

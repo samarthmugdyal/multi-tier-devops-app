@@ -17,7 +17,7 @@ The complete application and DevOps stack can be hosted on an **AWS EC2** server
 
 ## 🏗️ Project Architecture
 
-![Project Architecture](C:\sam_workspacce\devOps-project\multi-tier-devops-app\images\multi-tier-devops_project-img.png)
+![Project Architecture](images/multi-tier-devops_project-img.png)
 
 ### Project Flow
 
@@ -162,6 +162,26 @@ Application / Host
 - Use persistent Docker volumes for database and monitoring data.
 
 ---
+
+## ⚠️ Challenges Faced & Solutions
+
+During the implementation of this project, I faced several real-world DevOps challenges and resolved them through troubleshooting and testing.
+
+* **Docker container communication:** Configured Docker networks so NGINX, Node.js, Python, and MySQL could communicate correctly.
+* **Service startup dependency:** Handled service dependencies and health checks to ensure the application starts in the correct order.
+* **Jenkins–Docker integration:** Configured Jenkins with the required Docker permissions so the CI/CD pipeline could build and deploy containers automatically.
+* **GitHub Webhook issues:** Troubleshot webhook configuration and Jenkins trigger settings to achieve automatic pipeline execution after code pushes.
+* **Docker image/build failures:** Investigated build logs, dependency errors, and configuration issues during image creation.
+* **Container health and deployment failures:** Used Docker logs, container status, and health checks to identify and resolve failed deployments.
+* **Prometheus target configuration:** Configured Prometheus exporters and scrape targets to collect container and host-level metrics.
+* **Grafana dashboard connectivity:** Connected Grafana with Prometheus and verified that metrics were correctly displayed.
+* **Environment and secrets management:** Avoided hardcoding sensitive credentials by using environment variables and Jenkins credentials.
+* **Persistent database storage:** Configured Docker volumes to prevent MySQL data loss when containers are recreated.
+
+### 💡 Key Learning
+
+This project helped me understand that DevOps is not only about configuring tools, but also about **troubleshooting, automation, monitoring, security, and continuous improvement**.
+
 
 ## 🎯 Project Outcome
 
