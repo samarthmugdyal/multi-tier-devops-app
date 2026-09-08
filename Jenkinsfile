@@ -20,10 +20,10 @@ pipeline {
         DOCKER_FRONTEND_IMAGE = "${DOCKER_USERNAME}/multi-tier-frontend"
         DOCKER_PROXY_IMAGE    = "${DOCKER_USERNAME}/multi-tier-proxy"
 
-        DOCKER_CREDENTIAL_ID = 'dockerhub-credentials'
+        DOCKER_CREDENTIAL_ID = 'docker-hub-credentials'
 
-        APP_SERVER_CREDENTIAL_ID = 'app-server-ssh'
-        APP_SERVER_IP_CREDENTIAL_ID = 'app-server-ip'
+        APP_SERVER_CREDENTIAL_ID = 'jen-server-ssh-docker'
+        APP_SERVER_IP_CREDENTIAL_ID = 'docker-server-ip'
 
         APP_DIR = '/home/ubuntu/multi-tier-devops-app'
     }
