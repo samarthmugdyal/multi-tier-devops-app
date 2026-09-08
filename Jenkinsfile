@@ -262,14 +262,14 @@ pipeline {
 
                 withCredentials([
                     string(
-                        credentialsId: 'jen-server-ssh-docker',
+                        credentialsId: 'ssh-for-jen-docker',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
 
                     sshagent(
                         credentials: [
-                            'jen-server-ssh-docker'
+                            'ssh-for-jen-docker'
                         ]
                     ) {
 
@@ -325,7 +325,7 @@ pipeline {
 
                     sshagent(
                         credentials: [
-                            'docker-server-ssh'
+                            'ssh-for-jen-docker'
                         ]
                     ) {
 
