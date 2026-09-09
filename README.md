@@ -192,3 +192,5 @@ This project demonstrates practical knowledge of:
 It provides an end-to-end **automated deployment and monitoring workflow** for a multi-tier application.
 
 > **Build → Automate → Deploy → Monitor**
+
+**Built an automated, production-style DevOps workflow that reduced manual deployment effort by integrating GitHub, Jenkins CI/CD, Docker, Docker Hub, AWS EC2, and Prometheus/Grafana monitoring for a scalable multi-tier application.**
