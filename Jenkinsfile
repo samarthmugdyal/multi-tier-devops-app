@@ -262,7 +262,7 @@ pipeline {
 
                 withCredentials([
                     string(
-                        credentialsId: 'docker-server-ip',
+                        credentialsId: 'app-server-ip',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
@@ -318,7 +318,7 @@ pipeline {
 
                 withCredentials([
                     string(
-                        credentialsId: 'docker-server-ip',
+                        credentialsId: 'app-server-ip',
                         variable: 'APP_SERVER_IP'
                     )
                 ]) {
